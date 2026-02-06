@@ -30,7 +30,8 @@ export const EventProvider = ({ children }) => {
                 const formattedEvents = data.map(event => ({
                     id: event.id,
                     date: event.event_date,
-                    dateObj: new Date(event.event_date),
+                    // Add T12:00:00 to avoid timezone shifting the date by one day
+                    dateObj: new Date(event.event_date + 'T12:00:00'),
                     type: event.type,
                     title: event.title,
                     responsibles: {

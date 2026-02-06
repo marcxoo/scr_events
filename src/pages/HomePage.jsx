@@ -4,10 +4,14 @@ import EventList from '../components/EventList';
 import NextEvent from '../components/NextEvent';
 import { useEvents } from '../context/EventContext';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Timer } from 'lucide-react';
+
+const INTERVAL_SECONDS = 60;
 
 function HomePage() {
     const { events, loading } = useEvents();
     const [currentView, setCurrentView] = useState('list');
+    const [countdown, setCountdown] = useState(INTERVAL_SECONDS);
 
     // Logic to find the next event
     const now = new Date();
@@ -17,9 +21,19 @@ function HomePage() {
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentView(prev => prev === 'list' ? 'next' : 'list');
-        }, 60000);
+            setCountdown(INTERVAL_SECONDS);
+        }, INTERVAL_SECONDS * 1000);
 
         return () => clearInterval(interval);
+    }, []);
+
+    // Countdown timer
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCountdown(prev => (prev > 0 ? prev - 1 : INTERVAL_SECONDS));
+        }, 1000);
+
+        return () => clearInterval(timer);
     }, []);
 
     // Show loading state
@@ -62,6 +76,14 @@ function HomePage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Subtle countdown timer */}
+            <div className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-slate-100 select-none z-50">
+                <div className="w-6 h-6 bg-brand-blue/10 rounded-full flex items-center justify-center">
+                    <Timer size={14} className="text-brand-blue" strokeWidth={2.5} />
+                </div>
+                <span className="text-sm font-semibold text-slate-600 tabular-nums">{countdown}s</span>
+            </div>
         </Layout>
     );
 }

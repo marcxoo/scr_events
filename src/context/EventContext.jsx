@@ -1,45 +1,105 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { eventsData as defaultEvents } from '../data/events';
 
 const EventContext = createContext();
 
 export const EventProvider = ({ children }) => {
-    const [events, setEvents] = useState(() => {
-        const savedEvents = localStorage.getItem('events');
-        if (savedEvents) {
-            // Need to reconstruct Date objects
-            const parsed = JSON.parse(savedEvents);
-            return parsed.map(e => ({
-                ...e,
-                dateObj: new Date(e.dateObj)
-            }));
-        }
-        return defaultEvents;
-    });
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    // Fetch events from Supabase on mount
     useEffect(() => {
-        localStorage.setItem('events', JSON.stringify(events));
-    }, [events]);
+        fetchEvents();
+    }, []);
 
-    const addEvent = (newEvent) => {
-        setEvents(prev => {
-            // Sort by date automatically
-            const updated = [...prev, { ...newEvent, id: Date.now() }];
-            return updated.sort((a, b) => new Date(a.dateObj) - new Date(b.dateObj));
-        });
+    const fetchEvents = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('events')
+                .select('*')
+                .order('event_date', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching events:', error);
+                // Fallback to static data if Supabase fails
+                setEvents(defaultEvents);
+            } else {
+                // Transform Supabase data to match app format
+                const formattedEvents = data.map(event => ({
+                    id: event.id,
+                    date: event.event_date,
+                    dateObj: new Date(event.event_date),
+                    type: event.type,
+                    title: event.title,
+                    responsibles: {
+                        logistica: event.logistica || 'N/A',
+                        comunicacion: event.comunicacion || 'N/A'
+                    },
+                    time: event.time || '',
+                    description: event.description || ''
+                }));
+                setEvents(formattedEvents);
+            }
+        } catch (err) {
+            console.error('Supabase connection error:', err);
+            setEvents(defaultEvents);
+        }
+        setLoading(false);
     };
 
-    const updateEvent = (updatedEvent) => {
-        setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e)
-            .sort((a, b) => new Date(a.dateObj) - new Date(b.dateObj)));
+    const addEvent = async (newEvent) => {
+        const { data, error } = await supabase
+            .from('events')
+            .insert([{
+                event_date: newEvent.dateObj.toISOString().split('T')[0],
+                type: newEvent.type,
+                title: newEvent.title,
+                logistica: newEvent.responsibles.logistica,
+                comunicacion: newEvent.responsibles.comunicacion,
+                time: newEvent.time,
+                description: newEvent.description
+            }])
+            .select();
+
+        if (!error && data) {
+            await fetchEvents(); // Refresh the list
+        }
     };
 
-    const deleteEvent = (id) => {
-        setEvents(prev => prev.filter(e => e.id !== id));
+    const updateEvent = async (updatedEvent) => {
+        const { error } = await supabase
+            .from('events')
+            .update({
+                event_date: updatedEvent.dateObj.toISOString().split('T')[0],
+                type: updatedEvent.type,
+                title: updatedEvent.title,
+                logistica: updatedEvent.responsibles.logistica,
+                comunicacion: updatedEvent.responsibles.comunicacion,
+                time: updatedEvent.time,
+                description: updatedEvent.description
+            })
+            .eq('id', updatedEvent.id);
+
+        if (!error) {
+            await fetchEvents();
+        }
+    };
+
+    const deleteEvent = async (id) => {
+        const { error } = await supabase
+            .from('events')
+            .delete()
+            .eq('id', id);
+
+        if (!error) {
+            await fetchEvents();
+        }
     };
 
     return (
-        <EventContext.Provider value={{ events, addEvent, updateEvent, deleteEvent }}>
+        <EventContext.Provider value={{ events, loading, addEvent, updateEvent, deleteEvent, refetch: fetchEvents }}>
             {children}
         </EventContext.Provider>
     );

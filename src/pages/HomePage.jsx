@@ -10,22 +10,51 @@ const INTERVAL_SECONDS = 60;
 
 function HomePage() {
     const { events, loading } = useEvents();
-    const [currentView, setCurrentView] = useState('list');
+    const [viewIndex, setViewIndex] = useState(0); // 0 = list, 1 = first event, 2 = second event, etc.
     const [countdown, setCountdown] = useState(INTERVAL_SECONDS);
 
-    // Logic to find the next event
+    // Logic to find upcoming events
     const now = new Date();
-    const upcomingEvents = events.filter(e => new Date(e.dateObj) >= now).sort((a, b) => new Date(a.dateObj) - new Date(b.dateObj));
-    const nextEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : events[events.length - 1];
+    const upcomingEvents = events
+        .filter(e => new Date(e.dateObj) >= now)
+        .sort((a, b) => new Date(a.dateObj) - new Date(b.dateObj));
+
+    // Determine which events to feature in the rotation
+    const featuredEvents = [];
+    if (upcomingEvents.length > 0) {
+        // Always add the very next event
+        featuredEvents.push(upcomingEvents[0]);
+
+        // Check if the SECOND event is on the same day or the next day
+        if (upcomingEvents.length > 1) {
+            const firstEventDate = new Date(upcomingEvents[0].dateObj);
+            const secondEventDate = new Date(upcomingEvents[1].dateObj);
+
+            // Calculate difference in days
+            const diffTime = Math.abs(secondEventDate - firstEventDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // If same day (0) or next day (1), add to rotation
+            if (diffDays <= 1) {
+                featuredEvents.push(upcomingEvents[1]);
+            }
+        }
+    } else if (events.length > 0) {
+        // Fallback if no upcoming events, show last event
+        featuredEvents.push(events[events.length - 1]);
+    }
+
+    // Total views = 1 (List) + number of featured events
+    const totalViews = 1 + featuredEvents.length;
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setCurrentView(prev => prev === 'list' ? 'next' : 'list');
+            setViewIndex(prev => (prev + 1) % totalViews);
             setCountdown(INTERVAL_SECONDS);
         }, INTERVAL_SECONDS * 1000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [totalViews]);
 
     // Countdown timer
     useEffect(() => {
@@ -52,7 +81,7 @@ function HomePage() {
     return (
         <Layout>
             <AnimatePresence mode="wait">
-                {currentView === 'list' ? (
+                {viewIndex === 0 ? (
                     <motion.div
                         key="list"
                         className="w-full h-full"
@@ -65,14 +94,14 @@ function HomePage() {
                     </motion.div>
                 ) : (
                     <motion.div
-                        key="next"
+                        key={`event-${featuredEvents[viewIndex - 1].id}`}
                         className="w-full h-full"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <NextEvent event={nextEvent} />
+                        <NextEvent event={featuredEvents[viewIndex - 1]} />
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -27,7 +27,7 @@ const EventList = ({ events }) => {
                     </h1>
                 </div>
 
-                <div className="w-64 md:w-96 2xl:w-[24rem] flex items-center justify-center -mt-4 md:-mt-0 md:mr-12 transition-all duration-300">
+                <div className="w-64 md:w-96 2xl:w-[24rem] flex items-center justify-center -mt-8 md:-mt-0 md:mr-12 transition-all duration-300">
                     <img src={logoEmprendimiento} alt="Logo Emprendimiento" className="w-full object-contain" />
                 </div>
             </div>
@@ -59,19 +59,78 @@ const EventList = ({ events }) => {
                             return eDate >= today;
                         })
                         .sort((a, b) => new Date(a.dateObj) - new Date(b.dateObj))
-                        .slice(0, 2);
+                        .slice(0, 3);
                     const isUpcoming = upcomingEvents.some(e => e.id === event.id);
+
+                    // Determine special styling for specific dates
+                    let specialStyle = null;
+                    if (!isPast) {
+                        if (day === 18) {
+                            specialStyle = {
+                                border: 'border-green-500/40',
+                                shadow: 'shadow-green-500/20',
+                                ring: 'ring-green-500/20',
+                                shimmer: 'via-green-500/10',
+                                text: 'text-green-600',
+                                bg: 'bg-green-500',
+                                glow: 'group-hover:text-green-500'
+                            };
+                        } else if (day === 19) {
+                            specialStyle = {
+                                border: 'border-yellow-500/40',
+                                shadow: 'shadow-yellow-500/20',
+                                ring: 'ring-yellow-500/20',
+                                shimmer: 'via-yellow-500/10',
+                                text: 'text-yellow-600',
+                                bg: 'bg-yellow-500',
+                                glow: 'group-hover:text-yellow-500'
+                            };
+                        } else if (day === 24) {
+                            specialStyle = {
+                                border: 'border-red-500/40',
+                                shadow: 'shadow-red-500/20',
+                                ring: 'ring-red-500/20',
+                                shimmer: 'via-red-500/10',
+                                text: 'text-red-600',
+                                bg: 'bg-red-500',
+                                glow: 'group-hover:text-red-500'
+                            };
+                        }
+                    }
+
+                    // Default upcoming style (brand-orange) if no special date matches
+                    const borderClass = specialStyle
+                        ? specialStyle.border
+                        : 'border-brand-orange/40';
+                    const shadowClass = specialStyle
+                        ? specialStyle.shadow
+                        : 'shadow-brand-orange/20';
+                    const ringClass = specialStyle
+                        ? specialStyle.ring
+                        : 'ring-brand-orange/20';
+                    const shimmerClass = specialStyle
+                        ? specialStyle.shimmer
+                        : 'via-brand-orange/10';
+
+                    const hoverBgClass = specialStyle
+                        ? `group-hover:${specialStyle.bg}`
+                        : 'group-hover:bg-brand-orange';
+
+                    const hoverTextClass = specialStyle
+                        ? specialStyle.glow
+                        : 'group-hover:text-brand-orange';
 
                     return (
                         <motion.div
                             key={event.id}
                             variants={itemVariants}
-                            className={`group bg-white rounded-2xl p-0 shadow-md border overflow-hidden transition-all duration-300 relative ${isPast ? 'opacity-60 grayscale border-slate-100' : isUpcoming ? 'border-brand-orange/40 shadow-brand-orange/20 shadow-lg ring-2 ring-brand-orange/20' : 'border-slate-100 hover:shadow-xl hover:-translate-y-1'}`}
+                            className={`group bg-white rounded-2xl p-0 shadow-md border overflow-hidden transition-all duration-300 relative ${isPast ? 'bg-slate-100 border-slate-200' : isUpcoming ? `${borderClass} ${shadowClass} shadow-lg ring-2 ${ringClass}` : 'border-slate-100 hover:shadow-xl hover:-translate-y-1'}`}
+                            style={isPast ? { filter: 'grayscale(100%)', opacity: 0.6 } : {}}
                         >
                             {/* Shimmer effect for upcoming events */}
                             {isUpcoming && (
                                 <motion.div
-                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-orange/10 to-transparent z-10 pointer-events-none"
+                                    className={`absolute inset-0 bg-gradient-to-r from-transparent ${shimmerClass} to-transparent z-10 pointer-events-none`}
                                     animate={{
                                         x: ['-100%', '200%']
                                     }}
@@ -85,7 +144,7 @@ const EventList = ({ events }) => {
                             )}
                             <div className="flex h-full relative z-0">
                                 {/* Date Side */}
-                                <div className="w-28 md:w-32 2xl:w-40 bg-brand-blue text-white flex flex-col items-center justify-center p-4 relative overflow-hidden group-hover:bg-brand-orange transition-colors duration-300 shrink-0">
+                                <div className={`w-28 md:w-32 2xl:w-40 bg-brand-blue text-white flex flex-col items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 shrink-0 ${!isPast ? hoverBgClass : ''}`}>
                                     {/* Elegant soft glow effect - only for future events */}
                                     {!isPast && (
                                         <>
@@ -121,7 +180,7 @@ const EventList = ({ events }) => {
                                         </span>
                                     </div>
 
-                                    <h3 className="text-xl md:text-2xl 2xl:text-4xl font-extrabold text-brand-blue mb-3 leading-snug group-hover:text-brand-orange transition-colors">
+                                    <h3 className={`text-xl md:text-2xl 2xl:text-4xl font-extrabold text-brand-blue mb-3 leading-snug transition-colors ${!isPast ? hoverTextClass : ''}`}>
                                         {event.title}
                                     </h3>
 

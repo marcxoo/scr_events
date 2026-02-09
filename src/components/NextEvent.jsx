@@ -71,9 +71,21 @@ const NextEvent = ({ event }) => {
                     <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-3xl mt-8 p-6 bg-white rounded-2xl shadow-lg shadow-slate-200/50 relative z-20 border border-slate-100/50">
                         {/* Date */}
                         <div className="flex items-center gap-5 flex-1 border-b md:border-b-0 md:border-r border-slate-100 pb-5 md:pb-0 md:pr-6">
-                            <div className="w-14 h-14 bg-brand-orange/10 text-brand-orange rounded-xl flex items-center justify-center shrink-0">
+                            <motion.div
+                                animate={{
+                                    scale: [1, 1.05, 1],
+                                    backgroundColor: ["rgba(249, 115, 22, 0.1)", "rgba(249, 115, 22, 0.25)", "rgba(249, 115, 22, 0.1)"],
+                                    boxShadow: ["0 0 0 0px rgba(249, 115, 22, 0)", "0 0 0 4px rgba(249, 115, 22, 0.1)", "0 0 0 0px rgba(249, 115, 22, 0)"]
+                                }}
+                                transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
+                                className="w-14 h-14 bg-brand-orange/10 text-brand-orange rounded-xl flex items-center justify-center shrink-0"
+                            >
                                 <Calendar size={28} strokeWidth={2} />
-                            </div>
+                            </motion.div>
                             <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
                                     {event.dateObj.toLocaleDateString('es-ES', { weekday: 'long' })}

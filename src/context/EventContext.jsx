@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { eventsData as defaultEvents } from '../data/events';
@@ -7,14 +8,13 @@ const EventContext = createContext();
 export const EventProvider = ({ children }) => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Fetch events from Supabase on mount
-    useEffect(() => {
-        fetchEvents();
-    }, []);
+    const [error, setError] = useState(null);
+    // 'supabase' | 'fallback'
+    const [dataSource, setDataSource] = useState('supabase');
 
     const fetchEvents = async () => {
         setLoading(true);
+        setError(null);
         try {
             const { data, error } = await supabase
                 .from('events')
@@ -23,8 +23,10 @@ export const EventProvider = ({ children }) => {
 
             if (error) {
                 console.error('Error fetching events:', error);
+                setError(error?.message || 'Error fetching events');
                 // Fallback to static data if Supabase fails
                 setEvents(defaultEvents);
+                setDataSource('fallback');
             } else {
                 // Transform Supabase data to match app format
                 const formattedEvents = data.map(event => ({
@@ -42,65 +44,113 @@ export const EventProvider = ({ children }) => {
                     description: event.description || ''
                 }));
                 setEvents(formattedEvents);
+                setDataSource('supabase');
             }
         } catch (err) {
             console.error('Supabase connection error:', err);
+            setError(err?.message || 'Supabase connection error');
             setEvents(defaultEvents);
+            setDataSource('fallback');
         }
         setLoading(false);
     };
 
-    const addEvent = async (newEvent) => {
-        const { data, error } = await supabase
-            .from('events')
-            .insert([{
-                event_date: newEvent.dateObj.toISOString().split('T')[0],
-                type: newEvent.type,
-                title: newEvent.title,
-                logistica: newEvent.responsibles.logistica,
-                comunicacion: newEvent.responsibles.comunicacion,
-                time: newEvent.time,
-                description: newEvent.description
-            }])
-            .select();
+    // Fetch events from Supabase on mount
+    useEffect(() => {
+        // Defer to avoid synchronous setState within effect body (ESLint rule).
+        let cancelled = false;
+        Promise.resolve().then(() => {
+            if (cancelled) return;
+            fetchEvents();
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
-        if (!error && data) {
-            await fetchEvents(); // Refresh the list
+    const addEvent = async (newEvent) => {
+        setError(null);
+        try {
+            const { data, error } = await supabase
+                .from('events')
+                .insert([{
+                    event_date: newEvent.dateObj.toISOString().split('T')[0],
+                    type: newEvent.type,
+                    title: newEvent.title,
+                    logistica: newEvent.responsibles.logistica,
+                    comunicacion: newEvent.responsibles.comunicacion,
+                    time: newEvent.time,
+                    description: newEvent.description
+                }])
+                .select();
+
+            if (error) {
+                setError(error?.message || 'Error creating event');
+                return { ok: false, error };
+            }
+
+            if (data) {
+                await fetchEvents(); // Refresh the list
+            }
+            return { ok: true };
+        } catch (err) {
+            setError(err?.message || 'Error creating event');
+            return { ok: false, error: err };
         }
     };
 
     const updateEvent = async (updatedEvent) => {
-        const { error } = await supabase
-            .from('events')
-            .update({
-                event_date: updatedEvent.dateObj.toISOString().split('T')[0],
-                type: updatedEvent.type,
-                title: updatedEvent.title,
-                logistica: updatedEvent.responsibles.logistica,
-                comunicacion: updatedEvent.responsibles.comunicacion,
-                time: updatedEvent.time,
-                description: updatedEvent.description
-            })
-            .eq('id', updatedEvent.id);
+        setError(null);
+        try {
+            const { error } = await supabase
+                .from('events')
+                .update({
+                    event_date: updatedEvent.dateObj.toISOString().split('T')[0],
+                    type: updatedEvent.type,
+                    title: updatedEvent.title,
+                    logistica: updatedEvent.responsibles.logistica,
+                    comunicacion: updatedEvent.responsibles.comunicacion,
+                    time: updatedEvent.time,
+                    description: updatedEvent.description
+                })
+                .eq('id', updatedEvent.id);
 
-        if (!error) {
+            if (error) {
+                setError(error?.message || 'Error updating event');
+                return { ok: false, error };
+            }
+
             await fetchEvents();
+            return { ok: true };
+        } catch (err) {
+            setError(err?.message || 'Error updating event');
+            return { ok: false, error: err };
         }
     };
 
     const deleteEvent = async (id) => {
-        const { error } = await supabase
-            .from('events')
-            .delete()
-            .eq('id', id);
+        setError(null);
+        try {
+            const { error } = await supabase
+                .from('events')
+                .delete()
+                .eq('id', id);
 
-        if (!error) {
+            if (error) {
+                setError(error?.message || 'Error deleting event');
+                return { ok: false, error };
+            }
+
             await fetchEvents();
+            return { ok: true };
+        } catch (err) {
+            setError(err?.message || 'Error deleting event');
+            return { ok: false, error: err };
         }
     };
 
     return (
-        <EventContext.Provider value={{ events, loading, addEvent, updateEvent, deleteEvent, refetch: fetchEvents }}>
+        <EventContext.Provider value={{ events, loading, error, dataSource, addEvent, updateEvent, deleteEvent, refetch: fetchEvents }}>
             {children}
         </EventContext.Provider>
     );
